@@ -58,7 +58,10 @@ class BaseBot(telebot.TeleBot):
 
     def send_photo(self, chat_id: int, photo: Union[Path, str],
                    caption: str, markup: Union[ReplyKeyboardMarkup, InlineKeyboardMarkup] = None) -> Message:
-        return super().send_photo(chat_id, photo if type(photo) is str else open(photo, 'rb+'), caption=caption, parse_mode='html', reply_markup=markup)
+        if type(photo) is PosixPath or (type(photo) is str and photo.startswith('/')):
+            return super().send_photo(chat_id, photo if type(photo) is str else open(photo, 'rb+'), caption=caption, parse_mode='html', reply_markup=markup)
+        else:
+            return super().send_photo(chat_id, BytesIO(b64decode(photo.encode('ascii'))), caption=caption, parse_mode='html', reply_markup=markup)
 
     def send_document(self, chat_id: int, path: Union[Path, PosixPath, str],
                       markup: Union[ReplyKeyboardMarkup, InlineKeyboardMarkup] = None,
@@ -137,7 +140,7 @@ class Bot(BaseBot):
         """
         if not TelegramUser.objects.filter(user_id=message.contact.user_id).exists():
             TelegramUser.objects.create(user_id=message.contact.user_id, username=message.from_user.username, phone_number=message.contact.phone_number)
-        self.send(message.chat.id, 'Теперь вы зарегистрированны в Джанго телеграмм боте!', self.markups.welcome())
+        self.send(message.chat.id, 'Теперь вы зарегистрированны в Джанго телеграмм боте!', self.markups._remove())
 
     def send_register_message(self, message: Message) -> Message:
         """
